@@ -37,6 +37,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/extensions/shape.h>
+#include <X11/extensions/Xrender.h>
 #include <stdint.h>
 
 #define X11Window_PyObject_Check(v) ((v)->ob_type == &X11Window_PyObject_Type)

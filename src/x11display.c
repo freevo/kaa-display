@@ -183,10 +183,8 @@ X11Display_PyObject__init(X11Display_PyObject *self, PyObject *args,
 void
 X11Display_PyObject__dealloc(X11Display_PyObject * self)
 {
-    //printf("X11Display dealloc: %p\n", self);
     if (self->display) {
-        // FIXME
-        //XCloseDisplay(self->display);
+        XCloseDisplay(self->display);
     }
     Py_XDECREF(self->socket);
     Py_XDECREF(self->error_callback);
@@ -271,14 +269,9 @@ X11Display_PyObject__handle_events(X11Display_PyObject * self, PyObject * args)
             PyList_Append(events, o);
             Py_DECREF(o);
         }
-        else if (ev.type == MapNotify) {
-            o = Py_BuildValue("(i{s:i})", MapNotify,
+        else if (ev.type == MapNotify || ev.type == UnmapNotify) {
+            o = Py_BuildValue("(i{s:i})", ev.type,
                               "window", ev.xmap.window);
-            PyList_Append(events, o);
-            Py_DECREF(o);
-        }
-        else if (ev.type == UnmapNotify) {
-            o = Py_BuildValue("(i{s:i})", UnmapNotify, "window", ev.xmap.window);
             PyList_Append(events, o);
             Py_DECREF(o);
         }
@@ -401,7 +394,7 @@ X11Display_PyObject__composite_supported(X11Display_PyObject * self, PyObject * 
 	int major = 0, minor = 2; // The highest version we support
 
 	XCompositeQueryVersion( self->display, &major, &minor );
-
+    
 	// major and minor will now contain the highest version the server supports.
 	// The protocol specifies that the returned version will never be higher
 	// then the one requested. Version 0.2 is the first version to have the

@@ -29,13 +29,14 @@
  *
  * ----------------------------------------------------------------------------
  */
-
+#include "config.h"
 #include <Python.h>
 #include "x11window.h"
 #include "x11display.h"
 #include "structmember.h"
 
 void _make_invisible_cursor(X11Window_PyObject *win);
+Visual *find_argb_visual (Display *dpy, int scr);
 
 int _ewmh_set_hint(X11Window_PyObject *o, char *type, long *data, int ndata)
 {
@@ -88,11 +89,13 @@ X11Window_PyObject__new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
     X11Window_PyObject *self, *py_parent;
     X11Display_PyObject *display;
     Window parent;
-    int w, h, screen, window_events=1, mouse_events=1, key_events=1, input_only=0;
+    Window root;
+    Visual *visual;    
+    int w, h, screen, argb=0, depth, window_events=1, mouse_events=1, key_events=1, input_only=0;
     long evmask = 0;
     char *window_title = NULL;
     XSetWindowAttributes attr;
-    
+    unsigned long wmask;    
 
     self = (X11Window_PyObject *)type->tp_alloc(type, 0);
     if (!args)
@@ -105,6 +108,9 @@ X11Window_PyObject__new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
     py_parent = (X11Window_PyObject *)PyDict_GetItemString(kwargs, "parent");
     if (PyMapping_HasKeyString(kwargs, "title"))
         window_title = PyString_AsString(PyDict_GetItemString(kwargs, "title"));
+
+    if (PyMapping_HasKeyString(kwargs, "argb"))
+        argb = PyInt_AsLong(PyDict_GetItemString(kwargs, "argb"));
 
     if (PyMapping_HasKeyString(kwargs, "window_events"))
         window_events = PyInt_AsLong(PyDict_GetItemString(kwargs, "window_events"));
@@ -159,6 +165,25 @@ X11Window_PyObject__new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
         self->owner = Py_False;
     } else {
         screen = DefaultScreen(self->display);
+#ifdef HAVE_X11_COMPOSITE        
+        if (argb == 1)
+        {
+            depth = 32;
+            root = RootWindow(self->display, screen);
+            visual = find_argb_visual(self->display, screen);
+            attr.colormap = XCreateColormap (self->display, root, visual, AllocNone);
+            wmask = CWEventMask | CWBackPixel | CWBorderPixel | CWColormap;
+        }
+        else
+#endif  
+        {
+            depth = DefaultDepth(self->display, screen);
+            visual = DefaultVisual(self->display, screen);
+            attr.colormap = DefaultColormap(self->display, screen);
+            wmask = CWBackingStore | CWColormap | CWBackPixmap | CWWinGravity |
+                            CWBitGravity | CWEventMask | CWOverrideRedirect;
+        }
+
         attr.backing_store = NotUseful;
         attr.border_pixel = 0;
         attr.background_pixmap = None;
@@ -166,7 +191,6 @@ X11Window_PyObject__new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
         attr.bit_gravity = StaticGravity;
         attr.win_gravity = StaticGravity;
         attr.override_redirect = False;
-        attr.colormap = DefaultColormap(self->display, screen);
 
         x_error_trap_push();
         if (input_only){
@@ -176,10 +200,8 @@ X11Window_PyObject__new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
                                 CWWinGravity | CWEventMask, &attr);
         } else {
                 self->window = XCreateWindow(self->display, parent, 0, 0,
-                                w, h, 0, DefaultDepth(self->display, screen), InputOutput,
-                                DefaultVisual(self->display, screen),
-                                CWBackingStore | CWColormap | CWBackPixmap | CWWinGravity |
-                                CWBitGravity | CWEventMask | CWOverrideRedirect, &attr);
+                                w, h, 0, depth, InputOutput, visual,
+                                wmask, &attr);
         }
         XSync(self->display, False);
 
@@ -790,6 +812,44 @@ int x11window_object_decompose(X11Window_PyObject *win, Window *window, Display 
     return 1;
 }
 
+#ifdef HAVE_X11_COMPOSITE
+
+Visual *find_argb_visual (Display *dpy, int scr)
+{
+    XVisualInfo		*xvi;
+    XVisualInfo		template;
+    int			nvi;
+    int			i;
+    XRenderPictFormat	*format;
+    Visual		*visual;
+
+    template.screen = scr;
+    template.depth = 32;
+    template.class = TrueColor;
+    xvi = XGetVisualInfo (dpy, 
+			  VisualScreenMask |
+			  VisualDepthMask |
+			  VisualClassMask,
+			  &template,
+			  &nvi);
+    if (!xvi)
+        return 0;
+    
+    visual = 0;
+    for (i = 0; i < nvi; i++)
+    {
+        format = XRenderFindVisualFormat (dpy, xvi[i].visual);
+        if (format->type == PictTypeDirect && format->direct.alphaMask)
+        {
+            visual = xvi[i].visual;
+            break;
+        }
+    }
+
+    XFree (xvi);
+    return visual;
+}
+#endif
 
 static PyMemberDef X11Window_PyObject_members[] = {
     {"wid", T_OBJECT_EX, offsetof(X11Window_PyObject, wid), 0, ""},

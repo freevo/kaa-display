@@ -231,7 +231,13 @@ class X11Display(kaa.Object):
 X11Display.XEVENT_WINDOW_EVENTS_LIST = filter(lambda x: x.find("XEVENT_") != -1, dir(X11Display))
 X11Display.XEVENT_WINDOW_EVENTS = map(lambda x: getattr(X11Display, x), X11Display.XEVENT_WINDOW_EVENTS_LIST)
 
-def _get_display(display):
+def get_display(display=None):
+    """
+    Get a display object for the specfied display.
+    @param display: The name of the display to return (in standard X11 format) or
+    None for the default display.
+    @return: An X11Display object for the specified display.
+    """
     if not display:
         global _default_x11_display
         if not _default_x11_display:
@@ -267,6 +273,9 @@ class X11Window(object):
                        have a graphics surface.
            proxy_for: An X11Window to which all mouse and key events received 
                       by this window will be sent.
+           composite: A boolean to indicate whether the window can make use of 
+                      the XComposite extension to display translucent areas by 
+                      drawing to the window using an image with an alpha channel.
         
         The following kwargs apply in either case:
            window_events: A boolean, default True, to indicate whether the 
@@ -278,7 +287,7 @@ class X11Window(object):
            key_events: A boolean, default True, to indicate whether the client
                        wishes to receive key button pressed/release events.
         """
-        display = _get_display(display)
+        display = get_display(display)
         if window:
             if isinstance(window, (long, int)):
                 # Create new X11Window object based on existing window id.
@@ -293,6 +302,8 @@ class X11Window(object):
             if "parent" in kwargs:
                 assert(isinstance(kwargs["parent"], X11Window))
                 kwargs["parent"] = kwargs["parent"]._window
+            if 'composite' in kwargs and kwargs['composite']:
+                kwargs['argb'] = True
             if "proxy_for" in kwargs:
                 assert(isinstance(kwargs["proxy_for"], X11Window))
                 self.proxy_for = kwargs["proxy_for"]
@@ -300,6 +311,8 @@ class X11Window(object):
             w, h = kwargs.get('size', (1, 1))
             self._window = _X11.X11Window(display._display, (w or 1, h or 1), **kwargs)
 
+        if 'composite' in kwargs and kwargs['composite']:
+            display.composite_redirect = self._window.wid
         self._display = display
         display._windows[self._window.wid] = weakref.ref(self)
         self._cursor_hide_timeout = 1

@@ -92,7 +92,7 @@ else:
     config.define('HAVE_X11')
 
     x11.add_library('glib-2.0')
-    if check_library('XComposite', ['<X11/extensions/Xcomposite.h>'], libraries = ['Xcomposite']):
+    if check_library('XComposite', ['<X11/extensions/Xcomposite.h>'], libraries = ['Xcomposite', 'Xrender']):
         config.define('HAVE_X11_COMPOSITE')
         x11.add_library('XComposite')
 
