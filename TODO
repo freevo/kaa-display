@@ -1,12 +1,5 @@
-Move the classes from src/__init__.py into an extra file. The init
-file should only import some other stuff without too much defining
-inside.
-
-Maybe remove that bad pygame hack
-
-Create a REAME
-
-Every file needs a header and inline docs. Also correct the header to
-point to the correct AUTHORS file.
-
-Create doc in the Wiki and dump it into the doc subdir
+- Maybe remove that bad pygame hack
+- Create a README
+- Every file needs a header and inline docs. Also correct the header to point
+  to the correct AUTHORS file.
+- Convert docstrings to rEST
