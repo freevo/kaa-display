@@ -29,10 +29,22 @@
 #
 # -----------------------------------------------------------------------------
 
+MODULE = 'display'
+VERSION = '0.2.0'
+REQUIRES = ['kaa-base', 'kaa-imlib2']
+
 # python imports
 import re
 import os
 import sys
+
+
+if 'pip-egg-info' in sys.argv:
+    # Installing via pip; ensure dependencies are visible.
+    from setuptools import setup
+    setup(name='kaa-' + MODULE, version=VERSION, install_requires=REQUIRES)
+    sys.exit(0)
+
 
 try:
     # kaa base imports
@@ -149,8 +161,8 @@ build_requires_common = 'python-kaa-base >= 0.1.2, pygame-devel >= 1.6.0, python
                         'imlib2-devel >= 1.2.1'
 
 setup(
-    module  = 'display',
-    version = '0.1.0',
+    module  = MODULE,
+    version = VERSION,
     license = 'LGPL',
     summary = 'Python API providing Low level support for various displays, such as X11 or framebuffer.',
     rpminfo = {
@@ -162,6 +174,7 @@ setup(
           }
       },
     ext_modules = modules,
+    install_requires = REQUIRES,
     namespace_packages = ['kaa']
 )
 
