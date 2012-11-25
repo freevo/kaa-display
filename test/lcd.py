@@ -1,4 +1,8 @@
 # -*- coding: iso-8859-1 -*-
+
+import logging
+logging.basicConfig()
+
 import kaa.display
 import kaa
 

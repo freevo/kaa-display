@@ -197,7 +197,10 @@ class LCD(object):
         self.signals = {
             'connected': kaa.Signal()
         }
-        self._connect(server, port)
+        self._server = server
+        self._port = port
+        self._connected = False
+        self._connect()
         self._screenno = 0
 
 
@@ -215,22 +218,31 @@ class LCD(object):
         """
         Send a command to the server.
         """
+        if not self._connected:
+            return
         self.socket.write(line + '\n')
 
+    def _disconnect(self, expected):
+        self._connected = False
+        self._connect()
 
     @kaa.coroutine()
-    def _connect(self, server, port):
+    def _connect(self):
         """
         Connect to the server and init the connection.
         """
+        if self._connected:
+            yield False
         self.socket = kaa.Socket()
         try:
-            yield self.socket.connect((server, port))
+            yield self.socket.connect((self._server, self._port))
         except Exception, e:
             # try again later
             log.error('LCDproc connection error; will try again later')
-            kaa.OneShotTimer(self._connect, server, port).start(10)
+            kaa.OneShotTimer(self._connect).start(10)
             yield False
+        self.socket.signals['closed'].connect_once(self._disconnect)
+        self._connected = True
         self._send('hello')
         wait = kaa.inprogress(self.socket.signals['read'])
         line = (yield wait).strip().split()
