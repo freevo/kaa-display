@@ -37,7 +37,6 @@ import traceback
 
 # kaa for the socket callback
 import kaa
-from kaa.utils import property
 
 # the display module
 import _X11
