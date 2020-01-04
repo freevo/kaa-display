@@ -3,4 +3,4 @@ framebuffer. Provides X11Display and X11Window classes for managing
 X11 windows, with optional support for Imlib2 (render Imlib2 images to
 X11 windows), and pygame (render Imlib2 images to pygame surfaces).
 
-See http://www.freevo.org/kaa for more information
+The project is dead; see http://freevo.github.io
